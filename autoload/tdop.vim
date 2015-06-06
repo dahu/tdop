@@ -5,8 +5,30 @@ function! tdop#parser()
   let obj.token_types = {}
   let obj.index       = 0
 
-  func obj.token(token, lbp, nud, led)
-    call extend(self.token_types, {a:token : {'lbp' : a:lbp, 'nud' : a:nud, 'led': a:led}})
+  func obj.token(token, ...)
+    let token = a:token
+    let lbp = -1
+    if a:0
+      for [k, V] in items(a:1)
+        if k == 'lbp'
+          let lbp = V
+        endif
+        call self.decorate(token, k, V)
+        unlet V
+      endfor
+    endif
+    if lbp == -1
+      call self.decorate(token, 'lbp', 0)
+    endif
+  endfunc
+
+  func obj.decorate(token, name, value)
+    let token = a:token
+    if has_key(self.token_types, token)
+      call extend(self.token_types[token], {a:name : a:value})
+    else
+      call extend(self.token_types, {token : {a:name : a:value}})
+    endif
   endfunc
 
   func obj.tdop_token(token)
