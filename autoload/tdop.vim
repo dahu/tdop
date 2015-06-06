@@ -13,11 +13,18 @@ function! tdop#parser()
     let obj        = {}
     let obj.lbp    = 0
     let obj.type   = a:token[0]
-    let obj.value  = a:token[1]
+    let obj.string_value  = a:token[1]
+    if obj.string_value =~ '\d\+\.\d\+'
+      let obj.value = str2float(obj.string_value)
+    elseif obj.string_value =~ '\d\+'
+      let obj.value = str2nr(obj.string_value)
+    else
+      let obj.value = obj.string_value
+    endif
     let obj.line   = a:token[2]
     let found_type = 0
     for k in keys(self.token_types)
-      if obj.value =~# k
+      if obj.string_value =~# '^' . k . '$'
         let obj.lbp = get(self.token_types[k], 'lbp', 0)
         let obj.nud = get(self.token_types[k], 'nud', '')
         let obj.led = get(self.token_types[k], 'led', '')
@@ -54,8 +61,11 @@ function! tdop#parser()
     return left
   endfunc
 
+  let obj.x = obj.expression
+
   func obj.parse(text)
     let self.tokens = string#lexer(a:text).tokens.tokens
+    let self.index = 0
     call self.next()
     return self.expression(0)
   endfunc
