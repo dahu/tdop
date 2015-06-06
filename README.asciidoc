@@ -17,6 +17,7 @@ Bendersky's TDOP Notes (2010)]
 
 === TDOP for Vim
 
+NOTE: Requires https://github.com/dahu/vimple[Vimple]
 
 .Arithmetic TDOP Parser:
 ----
