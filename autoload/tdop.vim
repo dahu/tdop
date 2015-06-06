@@ -31,6 +31,22 @@ function! tdop#parser()
     endif
   endfunc
 
+  func obj.literal()
+    return [self.sym, self.value]
+  endfunc
+
+  func obj.prefix()
+    return [self.rsym, self._.x(self.rbp)]
+  endfunc
+
+  func obj.infix(left)
+    return [self.sym, a:left, self._.x(self.lbp)]
+  endfunc
+
+  func obj.right_infix(left)
+    return [self.sym, a:left, self._.x(self.lbp - 1)]
+  endfunc
+
   func obj.tdop_token(token)
     let obj        = {}
     let obj.lbp    = 0
@@ -47,9 +63,23 @@ function! tdop#parser()
     let found_type = 0
     for k in keys(self.token_types)
       if obj.string_value =~# '^' . k . '$'
-        let obj.lbp = get(self.token_types[k], 'lbp', 0)
-        let obj.nud = get(self.token_types[k], 'nud', '')
-        let obj.led = get(self.token_types[k], 'led', '')
+        for [name, Value] in items(self.token_types[k])
+          let obj[name] = Value
+          unlet Value
+        endfor
+        if has_key(obj, 'literal') && obj.literal != 0
+          let obj.prefix = self.literal
+        endif
+        if ! has_key(obj, 'prefix')
+          let obj.prefix = self.prefix
+        endif
+        if ! has_key(obj, 'infix')
+          if has_key(obj, 'right')
+            let obj.infix = self.right_infix
+          else
+            let obj.infix = self.infix
+          endif
+        endif
         let obj._ = self
         let found_type = 1
         break
@@ -74,11 +104,13 @@ function! tdop#parser()
   func obj.expression(rbp)
     let t = self.tok
     call self.next()
-    let left = call(t.nud, [], t)
+    let left = call(t.prefix, [], t)
     while a:rbp < self.tok.lbp
       let t = self.tok
       call self.next()
-      let left = call(t.led, [left], t)
+      let l = left
+      unlet left
+      let left = call(t.infix, [l], t)
     endwhile
     return left
   endfunc

@@ -1,0 +1,53 @@
+== Top Down Operator Precedence
+
+__TDOP parser for Vim__
+
+=== References:
+
+* https://tdop.github.io/[Vaughan R. Pratt's TDOP Paper (1973)]
+* https://github.com/douglascrockford/TDOP[Douglas Crockford's
+  Simplified JavaScript TDOP Parser] and
+  http://javascript.crockford.com/tdop/tdop.html[his TDOP article
+  (2007)]
+* http://effbot.org/zone/simple-top-down-parsing.htm[Fredrik Lundh's
+  TDOP in Python (2008)]
+* http://eli.thegreenplace.net/2010/01/02/top-down-operator-precedence-parsing[Eli
+Bendersky's TDOP Notes (2010)]
+
+
+=== TDOP for Vim
+
+
+.Arithmetic TDOP Parser:
+----
+let a = tdop#parser()
+
+call a.token('_end_')
+call a.token('\s\+')
+call a.token('\d\+\.\d\+', {'sym' : 'float', 'literal' : 1})
+call a.token('\d\+',       {'sym' : 'int',   'literal' : 1})
+
+call a.token('+',  {'sym' : 'add', 'lbp' : 10, 'rsym' : 'pos', 'rbp' : 100})
+call a.token('-',  {'sym' : 'sub', 'lbp' : 10, 'rsym' : 'neg', 'rbp' : 100})
+call a.token('*',  {'sym' : 'mul', 'lbp' : 20})
+call a.token('/',  {'sym' : 'div', 'lbp' : 20})
+call a.token('**', {'sym' : 'pow', 'lbp' : 30, 'right' : 1})
+
+echo a.parse("3.0 + 2")
+echo a.parse("-3.0 - 2")
+echo a.parse("-3.0 * 2")
+echo a.parse("-3.0 / 2")
+echo a.parse("2 ** 3 ** 4")
+echo a.parse("-1 + 2 * -3 / 4 ** -5 ** 6")
+----
+
+Produces the following parse trees:
+
+----
+['add', ['float', 3.0], ['int', 2]]
+['sub', ['neg', ['float', 3.0]], ['int', 2]]
+['mul', ['neg', ['float', 3.0]], ['int', 2]]
+['div', ['neg', ['float', 3.0]], ['int', 2]]
+['pow', ['int', 2], ['pow', ['int', 3], ['int', 4]]]
+['add', ['neg', ['int', 1]], ['div', ['mul', ['int', 2], ['neg', ['int', 3]]], ['pow', ['int', 4], ['pow', ['neg', ['int', 5]], ['int', 6]]]]]
+----
