@@ -7,17 +7,45 @@ function! tdop#parser()
 
   func obj.token(token, ...)
     let token = a:token
-    let lbp = -1
     if a:0
-      for [k, V] in items(a:1)
-        if k == 'lbp'
-          let lbp = V
+      let traits = a:1
+      for st in items({'lsym' : 'literal', 'bsym' : 'binary', 'usym' : 'unary', 'rsym' : 'right_binary'})
+        if has_key(traits, st[0])
+          call extend(traits, {'sym_type' : st[1]})
+          let traits.sym = get(traits, st[0])
+          break
         endif
+      endfor
+      if ! has_key(traits, 'bp')
+        call extend(traits, {'bp' : 0})
+      endif
+      if st[1] =~ 'binary'
+        call extend(traits, {'lbp' : traits.bp})
+        if has_key(traits, 'eval')
+          call extend(traits, {'beval' : traits.eval})
+        endif
+        if st[1] =~ 'right'
+          call extend(traits, {'right' : 1})
+        endif
+      endif
+      if st[1] == 'unary'
+        call extend(traits, {'rbp' : traits.bp})
+        if has_key(traits, 'eval')
+          call extend(traits, {'ueval' : traits.eval})
+        endif
+      endif
+      if st[1] == 'literal'
+        call extend(traits, {'literal' : 1})
+        if has_key(traits, 'eval')
+          call extend(traits, {'leval' : traits.eval})
+        endif
+      endif
+      " echom string(traits)
+      for [k, V] in items(traits)
         call self.decorate(token, k, V)
         unlet V
       endfor
-    endif
-    if lbp == -1
+    else
       call self.decorate(token, 'lbp', 0)
     endif
   endfunc
@@ -32,19 +60,38 @@ function! tdop#parser()
   endfunc
 
   func obj.literal()
-    return [self.sym, self.value]
+    let value = self.value
+    if has_key(self, 'leval')
+      let value = self.leval(value)
+    endif
+    return [self.sym, self.value, value]
   endfunc
 
   func obj.prefix()
-    return [self.rsym, self._.x(self.rbp)]
+    let right = self._.x(self.rbp)
+    let value = right[-1]
+    if has_key(self, 'ueval')
+      let value = self.ueval(value)
+    endif
+    return [self.usym, right, value]
   endfunc
 
   func obj.infix(left)
-    return [self.sym, a:left, self._.x(self.lbp)]
+    let right = self._.x(self.lbp)
+    let value = right[-1]
+    if has_key(self, 'beval')
+      let value = self.beval(a:left[-1], value)
+    endif
+    return [self.sym, a:left, right, value]
   endfunc
 
   func obj.right_infix(left)
-    return [self.sym, a:left, self._.x(self.lbp - 1)]
+    let right = self._.x(self.lbp - 1)
+    let value = right[-1]
+    if has_key(self, 'beval')
+      let value = self.beval(a:left[-1], value)
+    endif
+    return [self.sym, a:left, right, value]
   endfunc
 
   func obj.tdop_token(token)

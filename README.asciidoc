@@ -17,7 +17,11 @@ Bendersky's TDOP Notes (2010)]
 
 === TDOP for Vim
 
-NOTE: Requires https://github.com/dahu/vimple[Vimple]
+[NOTE]
+====
+* Requires https://github.com/dahu/vimple[Vimple]
+* Requires https://github.com/dahu/VimaholicsAnonymous[VimaholicsAnonymous]
+====
 
 .Arithmetic TDOP Parser:
 ----
@@ -25,30 +29,32 @@ let a = tdop#parser()
 
 call a.token('_end_')
 call a.token('\s\+')
-call a.token('\d\+\.\d\+', {'sym' : 'float', 'literal' : 1})
-call a.token('\d\+',       {'sym' : 'int',   'literal' : 1})
+call a.token('\d\+\.\d\+', {'lsym' : 'float'})
+call a.token('\d\+',       {'lsym' : 'int'})
 
-call a.token('+',  {'sym' : 'add', 'lbp' : 10, 'rsym' : 'pos', 'rbp' : 100})
-call a.token('-',  {'sym' : 'sub', 'lbp' : 10, 'rsym' : 'neg', 'rbp' : 100})
-call a.token('*',  {'sym' : 'mul', 'lbp' : 20})
-call a.token('/',  {'sym' : 'div', 'lbp' : 20})
-call a.token('**', {'sym' : 'pow', 'lbp' : 30, 'right' : 1})
+call a.token('+',  {'usym' : 'pos', 'bp' : 100, 'eval' : Fn('(x) => a:x')             })
+call a.token('-',  {'usym' : 'neg', 'bp' : 100, 'eval' : Fn('(x) => a:x * -1')        })
+call a.token('+',  {'bsym' : 'add', 'bp' : 10,  'eval' : Fn('(x,y) => a:x + a:y')     })
+call a.token('-',  {'bsym' : 'sub', 'bp' : 10,  'eval' : Fn('(x,y) => a:x - a:y')     })
+call a.token('*',  {'bsym' : 'mul', 'bp' : 20,  'eval' : Fn('(x,y) => a:x * a:y')     })
+call a.token('/',  {'bsym' : 'div', 'bp' : 20,  'eval' : Fn('(x,y) => a:x / a:y')     })
+call a.token('**', {'rsym' : 'pow', 'bp' : 30,  'eval' : Fn('(x,y) => pow(a:x, a:y)') })
 
 echo a.parse("3.0 + 2")
 echo a.parse("-3.0 - 2")
 echo a.parse("-3.0 * 2")
 echo a.parse("-3.0 / 2")
 echo a.parse("2 ** 3 ** 4")
-echo a.parse("-1 + 2 * -3 / 4 ** -5 ** 6")
+echo a.parse("-1 + 2 * -3 / 4 ** 3 ** 2")
 ----
 
-Produces the following parse trees:
+Produces the following parse trees with evaluations:
 
 ----
-['add', ['float', 3.0], ['int', 2]]
-['sub', ['neg', ['float', 3.0]], ['int', 2]]
-['mul', ['neg', ['float', 3.0]], ['int', 2]]
-['div', ['neg', ['float', 3.0]], ['int', 2]]
-['pow', ['int', 2], ['pow', ['int', 3], ['int', 4]]]
-['add', ['neg', ['int', 1]], ['div', ['mul', ['int', 2], ['neg', ['int', 3]]], ['pow', ['int', 4], ['pow', ['neg', ['int', 5]], ['int', 6]]]]]
+['add', ['float', 3.0, 3.0], ['int', 2, 2], 5.0]
+['sub', ['neg', ['float', 3.0, 3.0], -3.0], ['int', 2, 2], -5.0]
+['mul', ['neg', ['float', 3.0, 3.0], -3.0], ['int', 2, 2], -6.0]
+['div', ['neg', ['float', 3.0, 3.0], -3.0], ['int', 2, 2], -1.5]
+['pow', ['int', 2, 2], ['pow', ['int', 3, 3], ['int', 4, 4], 81.0], 2.417852e24]
+['add', ['neg', ['int', 1, 1], -1], ['div', ['mul', ['int', 2, 2], ['neg', ['int', 3, 3], -3], -6], ['pow', ['int', 4, 4], ['pow', ['int', 3, 3], ['int', 2, 2], 9.0], 262144.0], -2.288818e-5], -1.000023]
 ----
